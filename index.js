@@ -48,7 +48,46 @@ const GoalSchema = new mongoose.Schema(
 
 const Goal = mongoose.model("Goal", GoalSchema);
 
+// Investment Model
+const InvestmentSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    name: { type: String, required: true },
+    target: { type: Number, required: true },
+    currentValue: { type: Number, default: 0 },
+    startDate: { type: String, required: true },
+    targetDate: { type: String, required: true },
+  },
+  { timestamps: true }
+);
+
+const Investment = mongoose.model("Investment", InvestmentSchema);
+
+// Budget Model
+const BudgetSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    category: { type: String, required: true },
+    limit: { type: Number, required: true },
+    spent: { type: Number, default: 0 },
+    month: { type: String, required: true }, // Format: "YYYY-MM"
+  },
+  { timestamps: true }
+);
+
+const Budget = mongoose.model("Budget", BudgetSchema);
+
 // Routes
+
+// User Routes
 app.post("/api/register", async (req, res) => {
   try {
     const { name, email, password, confirmPassword } = req.body;
@@ -123,6 +162,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// Goal Routes
 app.get("/api/goals", async (req, res) => {
   try {
     const { userId } = req.query;
@@ -183,23 +223,66 @@ app.delete("/api/goals/:id", async (req, res) => {
   }
 });
 
-// Budget Model
-const BudgetSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    category: { type: String, required: true },
-    limit: { type: Number, required: true },
-    spent: { type: Number, default: 0 },
-    month: { type: String, required: true }, // Format: "YYYY-MM"
-  },
-  { timestamps: true }
-);
+// Investment Routes
+app.get("/api/investments", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const investments = await Investment.find({ userId });
+    res.json(investments);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching investments", error: error.message });
+  }
+});
 
-const Budget = mongoose.model("Budget", BudgetSchema);
+app.post("/api/investments", async (req, res) => {
+  try {
+    const investment = new Investment(req.body);
+    await investment.save();
+    res.status(201).json(investment);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error creating investment", error: error.message });
+  }
+});
+
+app.patch("/api/investments/:id", async (req, res) => { 
+  try {
+    const { amountToAdd } = req.body;
+    const investment = await Investment.findById(req.params.id);
+
+    if (!investment) {
+      return res.status(404).json({ message: "Investment not found" });
+    }
+
+    investment.currentValue += amountToAdd;
+    await investment.save();
+
+    res.json(investment);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error updating investment", error: error.message });
+  }
+});
+
+app.delete("/api/investments/:id", async (req, res) => {
+  try {
+    const investment = await Investment.findById(req.params.id);
+    if (!investment) {
+      return res.status(404).json({ message: "Investment not found" });
+    }
+
+    await Investment.deleteOne({ _id: req.params.id });
+    res.json({ message: "Investment deleted successfully" });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error deleting investment", error: error.message });
+  }
+});
 
 // Budget Routes
 app.get("/api/budgets", async (req, res) => {
